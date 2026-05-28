@@ -1,6 +1,7 @@
 """Small DuckDB and ArcGIS helpers."""
 
 import json
+import os
 import re
 
 import duckdb
@@ -9,7 +10,8 @@ import requests
 
 from app.sources import SOURCES
 
-conn = duckdb.connect("openskagit.duckdb")
+DB_PATH = os.getenv("OPENSKAGIT_DB_PATH", "openskagit.duckdb")
+conn = duckdb.connect(DB_PATH)
 
 _SAFE_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 

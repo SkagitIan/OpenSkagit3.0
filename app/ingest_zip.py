@@ -1,6 +1,7 @@
 """Load Skagit County assessor CSV ZIP files into DuckDB."""
 
 from pathlib import Path
+import os
 import re
 import tempfile
 from urllib.parse import urlparse
@@ -29,7 +30,8 @@ def load_assessor_zip(zip_path_or_url=DEFAULT_ASSESSOR_ZIP_URL):
             zip_path = Path(zip_path_or_url)
 
         summaries = []
-        conn = duckdb.connect("openskagit.duckdb")
+        db_path = os.getenv("OPENSKAGIT_DB_PATH", "openskagit.duckdb")
+        conn = duckdb.connect(db_path)
 
         with ZipFile(zip_path) as archive:
             csv_members = [name for name in archive.namelist() if name.lower().endswith(".csv")]

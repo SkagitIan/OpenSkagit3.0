@@ -8,6 +8,50 @@ OpenSkagit is a small Python app for loading Skagit County public data into Duck
 - A simple static frontend at `/` for loading data and running queries.
 - Railway deployment config that uses Railpack and starts Uvicorn with Railway's `PORT` variable.
 - DuckDB helpers for local CSV, assessor ZIP, and ArcGIS ingestion.
+- Agent-facing helper functions that make the loaded DuckDB data easier to inspect and query with AI.
+
+## Data resources
+
+OpenSkagit can work with these public Skagit County data resources:
+
+- **ArcGIS parcels**: `arcgis_parcels` loads layer `0` from Skagit County's `OpenData/AssessorDataParcels` ArcGIS FeatureServer.
+- **ArcGIS zoning**: `arcgis_zoning` loads layer `14` from Skagit County's `Planning/ComprehensivePlanWebMap` ArcGIS MapServer.
+- **Assessor ZIP**: the assessor loader downloads `SkagitAssessmentData.zip` from Skagit County, extracts each CSV, and creates one DuckDB table per CSV.
+- **Local assessor CSVs**: `app/main.py` can load CSV files from `app/data/assessor` into DuckDB for local experiments.
+
+Loaded data is stored in DuckDB. By default the database file is `openskagit.duckdb`; set `OPENSKAGIT_DB_PATH` to use another path, such as a Railway volume mount.
+
+## How OpenSkagit uses AI
+
+OpenSkagit does not call an AI model by itself. Instead, it provides a simple, safe workflow that an AI assistant or agent can follow when answering questions about the loaded data:
+
+1. **Inspect the database first** with `describe_database()` or `GET /api/tables`. This returns the available tables and columns so the AI does not invent table names or fields.
+2. **Load missing public data only when needed** with `load_source(source_id, where="1=1", limit=1000)` or `POST /api/load/arcgis`. This keeps the workflow small and repeatable.
+3. **Query with SQL** using `sql_tool(sql)` or `POST /api/sql`. SQL through the web API is limited to one read-only statement with `SELECT`, `WITH`, `SHOW`, `DESCRIBE`, or `PRAGMA`.
+4. **Answer from evidence**. Agent answers should include the direct answer, the SQL used, the row count, and key evidence fields from the query result.
+
+The intended agent instructions are:
+
+```text
+Always call describe_database first.
+Never invent columns.
+Use sql_tool for analysis.
+Use load_source only when a missing ArcGIS source is needed.
+Answers must include direct answer, SQL used, row count, and key evidence fields.
+```
+
+This design keeps the AI layer separate from data loading and querying. The app owns the public data connections, DuckDB storage, and read-only SQL guardrails; an AI assistant only inspects schema, runs evidence-based queries, and summarizes results.
+
+## Basic workflow
+
+1. Start the app locally or deploy it to Railway.
+2. Open the browser UI.
+3. Load a public data source:
+   - choose an ArcGIS source and row limit, then click **Load ArcGIS source**; or
+   - click **Load assessor ZIP** to download and load assessor CSV tables.
+4. Click **Refresh tables** to review available tables, row counts, and columns.
+5. Run read-only SQL in the query box.
+6. If using an AI assistant, have it inspect the database schema first, run SQL for analysis, and cite the evidence fields it used.
 
 ## Run locally
 
